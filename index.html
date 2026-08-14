@@ -11,6 +11,11 @@
 <link rel="manifest" href="manifest.json"/>
 <title>一起听歌</title>
 <link rel="stylesheet" href="style.css"/>
+<style>
+.sync-on{background:rgba(180,140,255,.18) !important;}
+.sync-on .dock-icon{animation:syncPulse 1.5s ease-in-out infinite;}
+@keyframes syncPulse{0%,100%{opacity:1;}50%{opacity:.4;}}
+</style>
 </head>
 <body>
 <div class="ambience"><div class="a1"></div><div class="a2"></div></div>
@@ -61,9 +66,10 @@
   <button class="ctrl-btn" id="btnNext"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M16 18h2V6h-2zm-2-6L5.5 18V6z" transform="rotate(180 12 12)"/></svg></button>
 </div>
 <div class="bottom-dock">
-  <button class="dock-btn" id="openPlaylist"><span class="dock-icon">&#9835;</span>歌单</button>
-  <button class="dock-btn" id="openLyrics"><span class="dock-icon">&#9998;</span>歌词</button>
-  <button class="dock-btn" id="openSearch"><span class="dock-icon">&#128269;</span>搜索</button>
+  <button class="dock-btn" id="openPlaylist"><span class="dock-icon">&#9835;</span><span class="dock-label">歌单</span></button>
+  <button class="dock-btn" id="openLyrics"><span class="dock-icon">&#9998;</span><span class="dock-label">歌词</span></button>
+  <button class="dock-btn" id="syncBtn" onclick="toggleSync()"><span class="dock-icon">&#9752;</span><span class="dock-label">同步</span></button>
+  <button class="dock-btn" id="openSearch"><span class="dock-icon">&#128269;</span><span class="dock-label">搜索</span></button>
 </div>
 <div class="panel-mask" id="panelMask"></div>
 <div class="panel" id="playlistPanel"><div class="grab"></div><div class="panel-title">歌单</div><div class="song-list" id="songList"></div></div>
