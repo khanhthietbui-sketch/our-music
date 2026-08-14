@@ -1,10 +1,4 @@
-var API_LIST=[
-  "https://netease-cloud-music-api-eta-six.vercel.app",
-  "https://netease-cloud-music-api-beryl.vercel.app",
-  "https://music-api-psi.vercel.app",
-  "https://wyy-api.vercel.app"
-];
-var API=API_LIST[0];
+var API="https://netease-cloud-music-api-nu-sepia-68859l454r.vercel.app";
 var PL=[];
 var playlist=PL.slice(),ci=-1,playing=false,elapsed=0,timerRef=null;
 var au=new Audio();au.preload="metadata";au.crossOrigin="anonymous";
@@ -20,35 +14,17 @@ function avatarsTogether(){$("avatarLeft").classList.add("together");$("avatarRi
 function avatarsApart(){$("avatarLeft").classList.remove("together");$("avatarRight").classList.remove("together");$("wireL").classList.remove("show");$("wireR").classList.remove("show");$("statusText").textContent="暂停中";stopTimer();}
 function renderPL(){var l=$("songList");l.innerHTML="";playlist.forEach(function(s,i){var d=document.createElement("div");d.className="song-item"+(i===ci?" playing":"");d.innerHTML='<span class="song-idx">'+(i===ci?"&#9835;":i+1)+'</span><div class="song-meta"><div class="sname">'+esc(s.title)+'</div><div class="sartist">'+esc(s.artist||"")+'</div></div>';d.onclick=function(){selSong(i);};l.appendChild(d);});}
 
-/* ---- 带备用API的fetch ---- */
-function apiFetch(path,cb,idx){
-  idx=idx||0;
-  if(idx>=API_LIST.length){cb(null);return;}
-  var url=API_LIST[idx]+path;
-  fetch(url).then(function(r){
-    if(!r.ok)throw new Error("status "+r.status);
-    return r.json();
-  }).then(function(j){
-    API=API_LIST[idx];
-    cb(j);
-  }).catch(function(){
-    apiFetch(path,cb,idx+1);
-  });
-}
-
 /* ---- 网易云：获取歌曲播放链接 ---- */
 function getSongUrl(id,cb){
-  apiFetch("/song/url/v1?id="+id+"&level=exhigh",function(j){
-    if(!j){cb("");return;}
+  fetch(API+"/song/url/v1?id="+id+"&level=exhigh").then(function(r){return r.json();}).then(function(j){
     var u=(j.data&&j.data[0]&&j.data[0].url)||"";
     cb(u);
-  });
+  }).catch(function(){cb("");});
 }
 
 /* ---- 网易云：获取歌词 ---- */
 function getLyric(id,cb){
-  apiFetch("/lyric?id="+id,function(j){
-    if(!j){cb([]);return;}
+  fetch(API+"/lyric?id="+id).then(function(r){return r.json();}).then(function(j){
     var raw=(j.lrc&&j.lrc.lyric)||"";
     var lines=[];
     raw.split("\n").forEach(function(line){
@@ -60,7 +36,7 @@ function getLyric(id,cb){
       }
     });
     cb(lines);
-  });
+  }).catch(function(){cb([]);});
 }
 
 /* ---- 选歌播放 ---- */
@@ -128,11 +104,7 @@ function doS(){
   var q=$("searchInput").value.trim();
   if(!q)return;
   $("searchResults").innerHTML='<div style="text-align:center;padding:30px;color:var(--text3);font-size:13px;">搜索中...</div>';
-  apiFetch("/cloudsearch?keywords="+encodeURIComponent(q)+"&limit=20",function(j){
-    if(!j){
-      $("searchResults").innerHTML='<div style="text-align:center;padding:30px;color:var(--text3);font-size:13px;">搜索出错了，再试一次</div>';
-      return;
-    }
+  fetch(API+"/cloudsearch?keywords="+encodeURIComponent(q)+"&limit=20").then(function(r){return r.json();}).then(function(j){
     var songs=(j.result&&j.result.songs)||[];
     if(!songs.length){$("searchResults").innerHTML='<div style="text-align:center;padding:30px;color:var(--text3);font-size:13px;">没有找到相关歌曲</div>';return;}
     var box=$("searchResults");box.innerHTML="";
@@ -166,6 +138,8 @@ function doS(){
       });
       box.appendChild(d);
     });
+  }).catch(function(){
+    $("searchResults").innerHTML='<div style="text-align:center;padding:30px;color:var(--text3);font-size:13px;">搜索出错了，再试一次</div>';
   });
 }
 
