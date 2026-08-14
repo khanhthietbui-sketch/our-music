@@ -16,6 +16,17 @@
 .sync-on .dock-icon{animation:syncPulse 1.5s ease-in-out infinite;}
 @keyframes syncPulse{0%,100%{opacity:1;}50%{opacity:.4;}}
 </style>
+<script>
+// Force nuke old service workers and caches
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.getRegistrations().then(function(regs){
+    regs.forEach(function(r){r.unregister();});
+  });
+  caches.keys().then(function(ks){
+    ks.forEach(function(k){caches.delete(k);});
+  });
+}
+</script>
 </head>
 <body>
 <div class="ambience"><div class="a1"></div><div class="a2"></div></div>
@@ -95,6 +106,5 @@
   </div>
 </div>
 <script src="app.js"></script>
-<script>if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js');}</script>
 </body>
 </html>
