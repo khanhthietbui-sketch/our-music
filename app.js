@@ -1,7 +1,40 @@
 var API="https://netease-cloud-music-api-nu-sepia-68859l454r.vercel.app";
+var SYNC_URL="https://lyric-sync-production-2514.up.railway.app";
 var PL=[];
 var playlist=PL.slice(),ci=-1,playing=false,elapsed=0,timerRef=null;
 var au=new Audio();au.preload="metadata";au.crossOrigin="anonymous";
+
+/* ---- 歌词同步 ---- */
+var syncEnabled=localStorage.getItem("sync_enabled")==="true";
+var lastSyncLyric="";
+function sendSync(data){
+  if(!syncEnabled)return;
+  fetch(SYNC_URL+"/sync",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)}).catch(function(){});
+}
+function toggleSync(){
+  syncEnabled=!syncEnabled;
+  localStorage.setItem("sync_enabled",syncEnabled?"true":"false");
+  var btn=$("syncBtn");
+  if(btn){
+    btn.classList.toggle("sync-on",syncEnabled);
+    btn.querySelector(".dock-label").textContent=syncEnabled?"同步中":"同步";
+  }
+  if(syncEnabled){
+    var s=ci>=0?playlist[ci]:null;
+    sendSync({
+      song:s?s.title:"",
+      artist:s?(s.artist||""):"",
+      cover:s?(s.cover||""):"",
+      lyric:lastSyncLyric||"",
+      elapsed:au.currentTime||0,
+      duration:au.duration||0,
+      syncing:playing
+    });
+  }else{
+    sendSync({syncing:false});
+  }
+}
+
 function $(id){return document.getElementById(id);}
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
 function fmt(s){if(!isFinite(s)||s<0)s=0;s=Math.floor(s);return Math.floor(s/60)+":"+String(s%60).padStart(2,"0");}
@@ -54,6 +87,10 @@ function selSong(i){
   $("trackFill").style.width="0%";$("trackThumb").style.left="0%";
   $("curTime").textContent="0:00";$("durTime").textContent="0:00";
   renderPL();
+  lastSyncLyric="";
+
+  // 同步歌曲信息
+  sendSync({song:s.title,artist:s.artist||"",cover:s.cover||"",lyric:"",elapsed:0,duration:0,syncing:true});
 
   if(s.neteaseId){
     $("songArtist").textContent=(s.artist||"")+" · 加载中...";
@@ -74,7 +111,14 @@ function selSong(i){
 }
 
 function tog(){if(ci<0){if(playlist.length)selSong(0);return;}if(au.paused){au.play().then(function(){playing=true;upState();$("coverGlow").classList.add("on");}).catch(function(){});}else{au.pause();playing=false;upState();}}
-function upState(){var si=function(el){if(playing)el.innerHTML='<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>';else el.innerHTML='<polygon points="8,5 19,12 8,19"/>';};si($("playIcon"));si($("lyPlayIcon"));if(playing){$("coverDisc").classList.add("spin");avatarsTogether();}else{$("coverDisc").classList.remove("spin");avatarsApart();}}
+function upState(){
+  var si=function(el){if(playing)el.innerHTML='<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>';else el.innerHTML='<polygon points="8,5 19,12 8,19"/>';};
+  si($("playIcon"));si($("lyPlayIcon"));
+  if(playing){$("coverDisc").classList.add("spin");avatarsTogether();}
+  else{$("coverDisc").classList.remove("spin");avatarsApart();}
+  // 同步播放状态
+  sendSync({syncing:playing,elapsed:au.currentTime||0,duration:au.duration||0});
+}
 function nxt(){if(!playlist.length)return;selSong((ci+1)%playlist.length);}
 function prv(){if(!playlist.length)return;if(au.currentTime>3)au.currentTime=0;else selSong((ci-1+playlist.length)%playlist.length);}
 au.addEventListener("loadedmetadata",function(){$("seekBar").max=au.duration||0;$("durTime").textContent=fmt(au.duration);});
@@ -95,7 +139,26 @@ $("openLyrics").addEventListener("click",function(){$("lyricsPanel").classList.a
 $("lyricsClose").addEventListener("click",function(){$("lyricsPanel").classList.remove("open");});
 var cLy=[];
 function renderLy(song){var b=$("lyricsBody");b.innerHTML="";cLy=song.lyrics||[];if(!cLy.length){b.innerHTML='<div class="lyric-line" style="color:var(--text2);">暂无歌词</div>';return;}cLy.forEach(function(l,i){var d=document.createElement("div");d.className="lyric-line";d.dataset.idx=i;d.textContent=l.l;b.appendChild(d);});}
-function upLyric(t){if(!cLy.length)return;var ai=0;for(var i=cLy.length-1;i>=0;i--){if(t>=cLy[i].t){ai=i;break;}}var ls=$("lyricsBody").querySelectorAll(".lyric-line");ls.forEach(function(el,i){if(i===ai){if(!el.classList.contains("active")){el.classList.add("active");el.scrollIntoView({behavior:"smooth",block:"center"});}}else el.classList.remove("active");});}
+function upLyric(t){
+  if(!cLy.length)return;
+  var ai=0;
+  for(var i=cLy.length-1;i>=0;i--){if(t>=cLy[i].t){ai=i;break;}}
+  var ls=$("lyricsBody").querySelectorAll(".lyric-line");
+  ls.forEach(function(el,i){
+    if(i===ai){
+      if(!el.classList.contains("active")){
+        el.classList.add("active");
+        el.scrollIntoView({behavior:"smooth",block:"center"});
+      }
+    }else el.classList.remove("active");
+  });
+  // 同步当前歌词
+  var curLyric=cLy[ai]?cLy[ai].l:"";
+  if(curLyric!==lastSyncLyric){
+    lastSyncLyric=curLyric;
+    sendSync({lyric:curLyric,elapsed:t,duration:au.duration||0,syncing:true});
+  }
+}
 
 /* ---- 网易云搜索 ---- */
 $("searchBtn").addEventListener("click",doS);
@@ -161,3 +224,12 @@ function loadPL(){
 }
 loadPL();
 renderPL();upState();
+
+/* ---- 同步按钮初始化 ---- */
+(function(){
+  var btn=$("syncBtn");
+  if(btn&&syncEnabled){
+    btn.classList.add("sync-on");
+    btn.querySelector(".dock-label").textContent="同步中";
+  }
+})();
