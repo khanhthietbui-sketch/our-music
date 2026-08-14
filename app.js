@@ -1,4 +1,4 @@
-var API="https://netease-cloud-music-api-nu-sepia-68859l454r.vercel.app";
+var API="https://netease-cloud-music-api-backup-five-red.vercel.app";
 var SYNC_URL="https://lyric-sync-production-2514.up.railway.app";
 var PL=[];
 var playlist=PL.slice(),ci=-1,playing=false,elapsed=0,timerRef=null;
