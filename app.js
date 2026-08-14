@@ -233,3 +233,63 @@ renderPL();upState();
     btn.querySelector(".dock-label").textContent="同步中";
   }
 })();
+
+/* ---- 监听MCP播放指令（通过SSE）---- */
+(function(){
+  var cmdSource=new EventSource(SYNC_URL+"/stream");
+  cmdSource.onmessage=function(e){
+    try{
+      var data=JSON.parse(e.data);
+      if(data.command==="play"&&data.song){
+        var s=data.song;
+        var song={title:s.title,artist:s.artist,cover:s.cover||"",neteaseId:s.neteaseId||null,url:s.url||"",lyrics:[]};
+        // 检查是否已在歌单中
+        var existIdx=-1;
+        for(var k=0;k<playlist.length;k++){
+          if(song.neteaseId&&playlist[k].neteaseId===song.neteaseId){existIdx=k;break;}
+        }
+        if(existIdx<0){
+          playlist.push(song);
+          savePL();
+          existIdx=playlist.length-1;
+        }
+        selSong(existIdx);
+        // 自动开启同步
+        if(!syncEnabled){toggleSync();}
+      }
+    }catch(ex){}
+  };
+  cmdSource.onerror=function(){
+    // 断线后3秒重连
+    setTimeout(function(){
+      cmdSource.close();
+      arguments.callee;
+    },3000);
+  };
+})();
+
+/* ---- 轮询MCP播放指令（备用）---- */
+(function(){
+  setInterval(function(){
+    fetch(SYNC_URL+"/commands").then(function(r){return r.json();}).then(function(cmds){
+      if(!cmds||!cmds.length)return;
+      cmds.forEach(function(cmd){
+        if(cmd.action==="play"&&cmd.song){
+          var s=cmd.song;
+          var song={title:s.title,artist:s.artist,cover:s.cover||"",neteaseId:s.neteaseId||null,url:s.url||"",lyrics:[]};
+          var existIdx=-1;
+          for(var k=0;k<playlist.length;k++){
+            if(song.neteaseId&&playlist[k].neteaseId===song.neteaseId){existIdx=k;break;}
+          }
+          if(existIdx<0){
+            playlist.push(song);
+            savePL();
+            existIdx=playlist.length-1;
+          }
+          selSong(existIdx);
+          if(!syncEnabled){toggleSync();}
+        }
+      });
+    }).catch(function(){});
+  },3000);
+})();
